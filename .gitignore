@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.o
+*.so
+dashboard_data.txt
+.vscode/
+onnx_lib/
+onnxruntime*.tgz*
+!model/sentinel.onnx
