@@ -4,38 +4,32 @@
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
-#include <cstdlib> // For system() commands
+#include <cstdlib>
 #include <string>
 #include "onnxruntime_cxx_api.h"
-#include <fstream> // Add this include
+#include <fstream>
 
 void log_to_file(std::string src_ip) {
     std::ofstream outfile;
-    outfile.open("../dashboard_data.txt", std::ios_base::app); // Append mode
+    outfile.open("../dashboard_data.txt", std::ios_base::app);
     outfile << src_ip << std::endl;
 }
-
-
 
 Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "SentinelAI");
 Ort::SessionOptions session_options;
 Ort::Session* session = nullptr;
 
-// --- THE FIREWALL ENFORCER ---
 void block_ip(const char* ip_address) {
-    // SAFETY CHECK: Don't block your own router or localhost!
     std::string ip_str(ip_address);
     if (ip_str.rfind("192.168.", 0) == 0 || ip_str == "127.0.0.1") {
         std::cout << "[SAFEGUARD] Skipping block for local/safe IP: " << ip_str << std::endl;
         return;
     }
 
-    // The Command: "sudo iptables -A INPUT -s 1.2.3.4 -j DROP"
     std::string command = "iptables -A INPUT -s " + ip_str + " -j DROP";
     
     std::cout << "\033[1;31m[FIREWALL] EXECUTING: " << command << "\033[0m" << std::endl;
     
-    // Execute the command in Linux terminal
     system(command.c_str());
 }
 
@@ -51,10 +45,8 @@ void packet_handler(u_char *user_data, const struct pcap_pkthdr *pkthdr, const u
         float dst_port = (float)ntohs(tcp_header->dest);
         float flags = (float)tcp_header->th_flags;
 
-        // Convert IP to string for blocking
         char* src_ip_str = inet_ntoa(ip_header->ip_src);
 
-        // AI Logic
         std::vector<float> input_tensor_values = {src_port, dst_port, packet_size, flags};
         std::vector<int64_t> input_node_dims = {1, 4};
 
@@ -73,11 +65,9 @@ void packet_handler(u_char *user_data, const struct pcap_pkthdr *pkthdr, const u
 
         int64_t* label = output_tensors[0].GetTensorMutableData<int64_t>();
 
-        // --- ACTIVE DEFENSE LOGIC ---
         if (*label == 1) {
             std::cout << "[ALERT] Malicious Traffic from " << src_ip_str << " Detected!" << std::endl;
             
-            // CALL THE FIREWALL
             block_ip(src_ip_str);
             log_to_file(src_ip_str);
         }
@@ -90,7 +80,6 @@ int main() {
     
     char errbuf[PCAP_ERRBUF_SIZE];
     
-    // *** CHANGE THIS TO YOUR INTERFACE ***
     const char* dev = "wlo1"; 
 
     pcap_t *handle = pcap_open_live(dev, 65535, 1, 1000, errbuf);
