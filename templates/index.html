@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENTINEL | Active Defense Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #050505;
+            color: #00f3ff;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            text-shadow: 0 0 10px #00f3ff;
+            letter-spacing: 5px;
+            border-bottom: 2px solid #00f3ff;
+            padding-bottom: 10px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .status-bar {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            background: #111;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+        }
+
+        .metric {
+            text-align: center;
+        }
+
+        .metric h2 {
+            margin: 0;
+            font-size: 2rem;
+            color: #fff;
+        }
+
+        .metric span {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            width: 100%;
+            max-width: 800px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+        }
+
+        /* Glitch effect for the logo text */
+        .live-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1><span class="live-indicator"></span>SENTINEL // ACTIVE DEFENSE</h1>
+
+    <div class="status-bar">
+        <div class="metric">
+            <h2 id="total-attacks">0</h2>
+            <span>TOTAL THREATS BLOCKED</span>
+        </div>
+        <div class="metric">
+            <h2 id="active-ips">0</h2>
+            <span>UNIQUE ATTACKERS</span>
+        </div>
+        <div class="metric">
+            <h2 style="color: #00ff00;">ONLINE</h2>
+            <span>SYSTEM STATUS</span>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="attackChart"></canvas>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('attackChart').getContext('2d');
+        
+        // Setup Chart.js with Cyberpunk Styling
+        const attackChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Packets Dropped',
+                    data: [],
+                    backgroundColor: 'rgba(0, 243, 255, 0.2)',
+                    borderColor: '#00f3ff',
+                    borderWidth: 2,
+                    boxShadow: '0 0 10px #00f3ff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#222' },
+                        ticks: { color: '#00f3ff' }
+                    },
+                    x: {
+                        grid: { color: '#222' },
+                        ticks: { color: '#00f3ff' }
+                    }
+                },
+                plugins: {
+                    legend: { labels: { color: '#fff' } }
+                }
+            }
+        });
+
+        async function fetchData() {
+            try {
+                const response = await fetch('/api/data');
+                const data = await response.json();
+
+                if (data.status === "no_data") return;
+
+                const ips = Object.keys(data);
+                const counts = Object.values(data);
+
+                // Update Stats
+                document.getElementById('total-attacks').innerText = counts.reduce((a, b) => a + b, 0);
+                document.getElementById('active-ips').innerText = ips.length;
+
+                // Update Chart
+                attackChart.data.labels = ips;
+                attackChart.data.datasets[0].data = counts;
+                attackChart.update();
+
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            }
+        }
+
+        // Refresh every 1 second
+        setInterval(fetchData, 1000);
+        fetchData();
+    </script>
+</body>
+</html>
